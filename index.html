@@ -90,8 +90,9 @@ section{padding:100px 60px;}
 .vname{font-size:13px;font-weight:700;color:var(--white);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .vdate{font-size:11px;color:var(--gt);}
 .vcaption{font-size:12px;color:#aaa;margin-top:6px;line-height:1.5;}
-.vdel{position:absolute;top:10px;right:10px;background:rgba(204,26,26,.8);border:none;color:white;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;}
+.vdel{position:absolute;top:10px;right:10px;background:rgba(204,26,26,.8);border:none;color:white;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;display:none;align-items:center;justify-content:center;}
 .vcard:hover .vdel{opacity:1;}
+body.is-admin .vdel{display:flex;}
 .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gt);}
 .eico{font-size:48px;margin-bottom:16px;opacity:.4;}
 #servicos{display:none;}
@@ -220,12 +221,14 @@ footer{background:var(--g1);padding:40px 60px;display:flex;align-items:center;ju
     <div><div class="slbl">Portfolio</div><h2 class="stitle">Meus <em>Trabalhos</em></h2></div>
     <button id="admin-logout" onclick="sessionStorage.removeItem('sb_token');location.href=location.pathname;" style="display:none;background:transparent;border:1px solid rgba(204,26,26,.4);color:#888;padding:8px 16px;font-size:11px;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Sair</button>
   </div>
+  <div id="admin-tools" style="display:none;margin-bottom:16px;">
+    <input type="text" id="vcaption" placeholder="Legenda para o próximo vídeo (opcional)" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f5f0eb;padding:12px 16px;font-size:13px;font-family:'Syne',sans-serif;outline:none;box-sizing:border-box;">
+  </div>
   <div class="uzone fade-up" id="uzone">
     <input type="file" id="vinput" accept="video/*" multiple>
     <span class="uicon">&#9650;</span>
     <h3>Enviar Videos</h3>
     <p>Clique para selecionar ou arraste seus videos aqui<br><small style="opacity:.5">MP4, MOV, AVI - ate 50MB por arquivo</small></p>
-    <input type="text" id="vcaption" placeholder="Legenda (opcional)" onclick="event.stopPropagation()" style="margin-top:14px;width:100%;max-width:400px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f5f0eb;padding:10px 14px;font-size:13px;font-family:'Syne',sans-serif;outline:none;box-sizing:border-box;">
     <div class="uprog" id="uprog"><div class="ubar" id="ubar"></div></div>
     <div class="usta" id="usta"></div>
   </div>
@@ -404,7 +407,9 @@ if(new URLSearchParams(location.search).get('admin')==='1'){
   sbReq('/auth/v1/user',{method:'GET'}).then(async r=>{
     if(r.ok){
       uzone.style.display='block';
+      document.getElementById('admin-tools').style.display='block';
       document.getElementById('admin-logout').style.display='inline-flex';
+      document.body.classList.add('is-admin');
     } else {
       showLoginModal();
     }
@@ -443,7 +448,9 @@ function showLoginModal(){
       sessionStorage.setItem('sb_token', data.access_token);
       modal.remove();
       uzone.style.display='block';
+      document.getElementById('admin-tools').style.display='block';
       document.getElementById('admin-logout').style.display='inline-flex';
+      document.body.classList.add('is-admin');
     } else {
       err.textContent='E-mail ou senha incorretos.';
       err.style.display='block';
