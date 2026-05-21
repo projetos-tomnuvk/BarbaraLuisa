@@ -89,6 +89,7 @@ section{padding:100px 60px;}
 .vinfo{padding:16px;}
 .vname{font-size:13px;font-weight:700;color:var(--white);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .vdate{font-size:11px;color:var(--gt);}
+.vcaption{font-size:12px;color:#aaa;margin-top:6px;line-height:1.5;}
 .vdel{position:absolute;top:10px;right:10px;background:rgba(204,26,26,.8);border:none;color:white;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;}
 .vcard:hover .vdel{opacity:1;}
 .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gt);}
@@ -224,6 +225,7 @@ footer{background:var(--g1);padding:40px 60px;display:flex;align-items:center;ju
     <span class="uicon">&#9650;</span>
     <h3>Enviar Videos</h3>
     <p>Clique para selecionar ou arraste seus videos aqui<br><small style="opacity:.5">MP4, MOV, AVI - ate 50MB por arquivo</small></p>
+    <input type="text" id="vcaption" placeholder="Legenda (opcional)" onclick="event.stopPropagation()" style="margin-top:14px;width:100%;max-width:400px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f5f0eb;padding:10px 14px;font-size:13px;font-family:'Syne',sans-serif;outline:none;box-sizing:border-box;">
     <div class="uprog" id="uprog"><div class="ubar" id="ubar"></div></div>
     <div class="usta" id="usta"></div>
   </div>
@@ -362,8 +364,15 @@ function render(files){
     const date=new Date(f.created_at||Date.now()).toLocaleDateString('pt-BR');
     const c=document.createElement('div');
     c.className='vcard';c.dataset.name=f.name;
-    const cleanName=f.name.replace(/^\d+-/,'');
-    c.innerHTML='<div class="vthumb"><video src="'+url+'" preload="metadata"></video><div class="voverlay"><div class="playbtn">&#9654;</div></div></div><div class="vinfo"><div class="vname">'+cleanName+'</div><div class="vdate">'+date+'</div></div><button class="vdel" onclick="delVideo(\''+f.name+'\',this)">&#10005;</button>';
+    // extrai legenda e nome limpo
+    let cleanName=f.name.replace(/^\d+-/,'');
+    let caption='';
+    if(cleanName.includes('CAP:')){
+      const capMatch=cleanName.match(/CAP:([^|]+)\|\|\|(.+)/);
+      if(capMatch){caption=decodeURIComponent(capMatch[1]);cleanName=capMatch[2];}
+    }
+    const capHtml=caption?'<div class="vcaption">'+caption+'</div>':'';
+    c.innerHTML='<div class="vthumb"><video src="'+url+'" preload="metadata"></video><div class="voverlay"><div class="playbtn">&#9654;</div></div></div><div class="vinfo"><div class="vname">'+cleanName+'</div><div class="vdate">'+date+'</div>'+capHtml+'</div><button class="vdel" onclick="delVideo(\''+f.name+'\',this)">&#10005;</button>';
     c.querySelector('.voverlay').addEventListener('click',()=>{
       const v=c.querySelector('video');
       if(v.paused){v.play();c.querySelector('.voverlay').style.opacity='0';}
@@ -451,13 +460,16 @@ vinput.addEventListener('change',()=>doUpload(vinput.files));
 
 async function doUpload(files){
   if(!files||!files.length)return;
+  const caption=document.getElementById('vcaption').value.trim();
   for(const file of files){
     if(!file.type.startsWith('video/')){toast('Apenas vídeos são permitidos!');continue;}
     if(file.size>52428800){toast(file.name+' é muito grande (máx 50MB)');continue;}
     const pg=document.getElementById('uprog'),bar=document.getElementById('ubar'),sta=document.getElementById('usta');
     pg.style.display='block';sta.style.display='block';
     sta.textContent='Enviando '+file.name+'...';bar.style.width='0%';
-    const fname=Date.now()+'-'+file.name.replace(/\s/g,'_');
+    // guarda legenda no nome: timestamp-CAPTION|||legenda-nomearquivo
+    const capPart=caption?'CAP:'+encodeURIComponent(caption)+'|||':'';
+    const fname=Date.now()+'-'+capPart+file.name.replace(/\s/g,'_');
     try{
       let p=0;
       const iv=setInterval(()=>{p=Math.min(p+Math.random()*15,90);bar.style.width=p+'%';},200);
@@ -470,6 +482,7 @@ async function doUpload(files){
       if(!r.ok){const er=await r.json().catch(()=>({}));throw new Error(er.message||'upload error');}
       sta.textContent='&#10003; '+file.name+' enviado!';
       toast('Vídeo enviado com sucesso!','ok');
+      document.getElementById('vcaption').value='';
       setTimeout(()=>{pg.style.display='none';sta.style.display='none';bar.style.width='0%';loadVideos();},1200);
     }catch(e){
       document.getElementById('uprog').style.display='none';
