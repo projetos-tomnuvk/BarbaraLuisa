@@ -469,7 +469,7 @@ async function doUpload(files){
     sta.textContent='Enviando '+file.name+'...';bar.style.width='0%';
     // guarda legenda no nome: timestamp-CAPTION|||legenda-nomearquivo
     const capPart=caption?'CAP:'+encodeURIComponent(caption)+'|||':'';
-    const fname=Date.now()+'-'+capPart+file.name.replace(/\s/g,'_');
+    const fname=Date.now()+'-'+capPart+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     try{
       let p=0;
       const iv=setInterval(()=>{p=Math.min(p+Math.random()*15,90);bar.style.width=p+'%';},200);
