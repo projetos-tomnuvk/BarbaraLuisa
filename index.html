@@ -217,6 +217,7 @@ footer{background:var(--g1);padding:40px 60px;display:flex;align-items:center;ju
 <section id="trabalhos">
   <div class="theader">
     <div><div class="slbl">Portfolio</div><h2 class="stitle">Meus <em>Trabalhos</em></h2></div>
+    <button id="admin-logout" onclick="sessionStorage.removeItem('sb_token');location.href=location.pathname;" style="display:none;background:transparent;border:1px solid rgba(204,26,26,.4);color:#888;padding:8px 16px;font-size:11px;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Sair</button>
   </div>
   <div class="uzone fade-up" id="uzone">
     <input type="file" id="vinput" accept="video/*" multiple>
@@ -328,7 +329,8 @@ function toast(msg,type=''){
 }
 
 async function sbReq(path,opts={}){
-  const headers={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+  const token=sessionStorage.getItem('sb_token')||SB_KEY;
+  const headers={'apikey':SB_KEY,'Authorization':'Bearer '+token};
   if(opts.headers) Object.assign(headers, opts.headers);
   return fetch(SB_URL+path,{...opts,headers});
 }
@@ -386,7 +388,60 @@ async function delVideo(name,btn){
 }
 
 const uzone=document.getElementById('uzone');
-if(new URLSearchParams(location.search).get('admin')==='1'){uzone.style.display='block';}
+
+// Admin com Supabase Auth
+if(new URLSearchParams(location.search).get('admin')==='1'){
+  // Verifica se já tem sessão ativa
+  sbReq('/auth/v1/user',{method:'GET'}).then(async r=>{
+    if(r.ok){
+      uzone.style.display='block';
+      document.getElementById('admin-logout').style.display='inline-flex';
+    } else {
+      showLoginModal();
+    }
+  });
+}
+
+function showLoginModal(){
+  const modal=document.createElement('div');
+  modal.id='login-modal';
+  modal.innerHTML=`
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#1a1a1a;border:1px solid rgba(204,26,26,.3);padding:48px 40px;width:100%;max-width:380px;position:relative;">
+        <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#f5f0eb;margin-bottom:6px;">Área <em style='color:#cc1a1a'>Admin</em></div>
+        <p style="font-size:13px;color:#888;margin-bottom:28px;">Faça login para continuar.</p>
+        <input id="l-email" type="email" placeholder="E-mail" style="width:100%;background:#0a0a0a;border:1px solid rgba(255,255,255,.1);color:#f5f0eb;padding:12px 14px;font-size:13px;font-family:'Syne',sans-serif;margin-bottom:12px;outline:none;box-sizing:border-box;">
+        <input id="l-pass" type="password" placeholder="Senha" style="width:100%;background:#0a0a0a;border:1px solid rgba(255,255,255,.1);color:#f5f0eb;padding:12px 14px;font-size:13px;font-family:'Syne',sans-serif;margin-bottom:20px;outline:none;box-sizing:border-box;">
+        <div id="l-err" style="font-size:12px;color:#cc1a1a;margin-bottom:12px;display:none;"></div>
+        <button id="l-btn" style="width:100%;background:#cc1a1a;color:white;border:none;padding:14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Entrar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  document.getElementById('l-btn').addEventListener('click', async ()=>{
+    const email=document.getElementById('l-email').value.trim();
+    const pass=document.getElementById('l-pass').value;
+    const err=document.getElementById('l-err');
+    const btn=document.getElementById('l-btn');
+    btn.textContent='Entrando...';
+    const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pass})
+    });
+    const data=await r.json();
+    if(r.ok && data.access_token){
+      sessionStorage.setItem('sb_token', data.access_token);
+      modal.remove();
+      uzone.style.display='block';
+      document.getElementById('admin-logout').style.display='inline-flex';
+    } else {
+      err.textContent='E-mail ou senha incorretos.';
+      err.style.display='block';
+      btn.textContent='Entrar';
+    }
+  });
+}
 const vinput=document.getElementById('vinput');
 uzone.addEventListener('click',()=>vinput.click());
 uzone.addEventListener('dragover',e=>{e.preventDefault();uzone.classList.add('dragover');});
