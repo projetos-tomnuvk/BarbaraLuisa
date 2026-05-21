@@ -369,11 +369,7 @@ function render(files){
     c.className='vcard';c.dataset.name=f.name;
     // extrai legenda e nome limpo
     let cleanName=f.name.replace(/^\d+-/,'');
-    let caption='';
-    if(cleanName.includes('CAP:')){
-      const capMatch=cleanName.match(/CAP:([^|]+)\|\|\|(.+)/);
-      if(capMatch){caption=decodeURIComponent(capMatch[1]);cleanName=capMatch[2];}
-    }
+    let caption=localStorage.getItem('cap_'+f.name)||'';
     const capHtml=caption?'<div class="vcaption">'+caption+'</div>':'';
     c.innerHTML='<div class="vthumb"><video src="'+url+'" preload="metadata"></video><div class="voverlay"><div class="playbtn">&#9654;</div></div></div><div class="vinfo"><div class="vname">'+cleanName+'</div><div class="vdate">'+date+'</div>'+capHtml+'</div><button class="vdel" onclick="delVideo(\''+f.name+'\',this)">&#10005;</button>';
     c.querySelector('.voverlay').addEventListener('click',()=>{
@@ -474,9 +470,7 @@ async function doUpload(files){
     const pg=document.getElementById('uprog'),bar=document.getElementById('ubar'),sta=document.getElementById('usta');
     pg.style.display='block';sta.style.display='block';
     sta.textContent='Enviando '+file.name+'...';bar.style.width='0%';
-    // guarda legenda no nome: timestamp-CAPTION|||legenda-nomearquivo
-    const capPart=caption?'CAP:'+encodeURIComponent(caption)+'|||':'';
-    const fname=Date.now()+'-'+capPart+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const fname=Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
     try{
       let p=0;
       const iv=setInterval(()=>{p=Math.min(p+Math.random()*15,90);bar.style.width=p+'%';},200);
@@ -487,7 +481,9 @@ async function doUpload(files){
       });
       clearInterval(iv);bar.style.width='100%';
       if(!r.ok){const er=await r.json().catch(()=>({}));throw new Error(er.message||'upload error');}
-      sta.textContent='&#10003; '+file.name+' enviado!';
+      // salva legenda no localStorage
+      if(caption) localStorage.setItem('cap_'+fname, caption);
+      sta.textContent='✓ '+file.name+' enviado!';
       toast('Vídeo enviado com sucesso!','ok');
       document.getElementById('vcaption').value='';
       setTimeout(()=>{pg.style.display='none';sta.style.display='none';bar.style.width='0%';loadVideos();},1200);
